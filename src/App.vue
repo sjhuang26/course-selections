@@ -1,29 +1,56 @@
 <template>
-  <div id="app">
-    <div id="nav">
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
-    </div>
-    <router-view />
-  </div>
+  <AppBody />
 </template>
 
-<style lang="scss">
-#app {
-  font-family: "Avenir", Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-}
-#nav {
-  padding: 30px;
-  a {
-    font-weight: bold;
-    color: #2c3e50;
-    &.router-link-exact-active {
-      color: #42b983;
-    }
+<script>
+import AppBody from './components/AppBody';
+
+export default {
+  name: 'App',
+  components: {
+    AppBody
   }
+};
+</script>
+
+<style scoped>
+.app {
+  font-family: Helvetica, Arial, sans-serif;
+  height: 100%;
 }
+</style>
+
+<style>
+.h-layout {
+  display: flex;
+  flex-flow: row;
+  justify-content: center;
+}
+.h-layout > * {
+  flex: 1;
+  min-width: 0;
+}
+.v-layout {
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+}
+.v-layout > * {
+  flex: 1;
+  min-height: 0;
+}
+.flex-fit-content {
+  flex: 0 1 auto;
+}
+.scroll-layout {
+  overflow: auto;
+}
+.fixed-scroll-layout {
+  overflow: scroll;
+}
+</style>
+
+<style lang="scss">
+@import './styles/main.scss';
+@import 'bootstrap/scss/bootstrap.scss';
 </style>
