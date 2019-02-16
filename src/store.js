@@ -4,7 +4,17 @@ import Vuex from 'vuex';
 Vue.use(Vuex);
 
 export default new Vuex.Store({
-  state: {},
-  mutations: {},
-  actions: {}
+  state: {
+    currentPage: ['home']
+  },
+  mutations: {
+    setPage(state, path) {
+      state.currentPage = path;
+    }
+  },
+  actions: {
+    navigateToPage({ commit }, path) {
+      commit('setPage', path);
+    }
+  }
 });
