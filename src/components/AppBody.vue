@@ -37,7 +37,7 @@
 
 <script>
 import { mapState, mapActions } from 'vuex';
-import { subjects, data } from '../js/data';
+import { subjects } from '../js/data';
 import SubjectPage from './SubjectPage';
 
 export default {
@@ -45,17 +45,14 @@ export default {
   components: {
     SubjectPage
   },
-  data() {
-    return {
-      subjects,
-      data
-    };
-  },
   methods: {
     ...mapActions(['navigateToPage'])
   },
   computed: {
-    ...mapState(['currentPage'])
+    ...mapState(['currentPage']),
+    subjects() {
+      return subjects;
+    }
   }
 };
 </script>

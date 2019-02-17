@@ -1,6 +1,6 @@
-import rawData from '../assets/raw-data';
+import rawCourseData from '../assets/raw-course-data';
 
-const rawSubjects = [
+const rawSubjectData = [
   [
     'english',
     'English',
@@ -28,7 +28,8 @@ const rawSubjects = [
     [
       ['before-ddp', 'Before DDP'],
       ['after-ddp', 'After DDP'],
-      ['extra', 'Extra']
+      ['extra', 'Extra'],
+      ['misc', 'Misc']
     ]
   ],
   [
@@ -41,68 +42,70 @@ const rawSubjects = [
       ['latin', 'Latin'],
       ['german', 'German'],
       ['chinese', 'Chinese'],
-      ['extra', 'Extra']
+      ['extra', 'Extra'],
+      ['misc', 'Misc']
     ]
   ]
 ];
 
-class SubjectManager {
-  constructor(raw) {
-    this.raw = raw;
-    this.values = this.process(raw);
-  }
-
-  process(raw) {
-    const values = {};
-    for (const [key, name, mainCategory, categories] of raw) {
-      const categoriesValue = {};
-      for (const [key, name] of categories) {
-        categoriesValue[key] = {
-          name
-        };
-      }
-      values[key] = {
+function processRawSubjectData(raw) {
+  const subjects = {};
+  for (const [key, name, mainCategory, categories] of raw) {
+    const subjectCategories = {};
+    for (const [key, name] of categories) {
+      subjectCategories[key] = {
         name,
-        mainCategory,
-        categories
+        baseCourses: {}
       };
     }
-    return values;
+    subjects[key] = {
+      name,
+      mainCategory,
+      categories: subjectCategories,
+      baseCourses: {}
+    };
   }
-
-  levelCount(baseCourse) {
-    return Object.keys(baseCourse).length;
-  }
+  return subjects;
 }
-export const Subjects = new SubjectManager(rawSubjects);
-export const subjects = Subjects.values;
 
-class DataManager {
-  constructor(raw) {
-    this.raw = raw;
-    this.values = this.process(raw);
-  }
-
-  process(raw) {
-    const values = {};
-
-    for (let key of Object.keys(subjects)) {
-      values[key] = {};
+function incorporateRawCourseData(raw) {
+  for (const course of raw) {
+    // add to non-categorized object
+    const baseCourses = subjects[course.subject].baseCourses;
+    if (!baseCourses[course.baseKey]) {
+      baseCourses[course.baseKey] = {
+        category: course.category,
+        size: 0,
+        courses: {}
+      };
     }
-    for (let rawCourse of raw) {
-      const subjectData = values[rawCourse.subject];
-      if (!subjectData[rawCourse.baseKey]) {
-        subjectData[rawCourse.baseKey] = {};
+    baseCourses[course.baseKey].courses[course.level || 'e'] = course;
+    ++baseCourses[course.baseKey].size;
+  }
+  // categorize all the base courses
+  for (const [subjectKey, subject] of Object.entries(subjects)) {
+    for (const [key, baseCourse2] of Object.entries(subject.baseCourses)) {
+      const category = subject.categories[baseCourse2.category];
+      if (category === undefined) {
+        console.log(`missing category ${baseCourse2.category} in subject ${subjectKey}`);
+      } else {
+        category.baseCourses[key] = baseCourse2;
       }
-      const baseCourseData = subjectData[rawCourse.baseKey];
-      baseCourseData[rawCourse.level] = rawCourse;
     }
-
-    return values;
   }
 }
-export const Data = new DataManager(rawData);
-export const data = Data.values;
+
+export const subjects = processRawSubjectData(rawSubjectData);
+incorporateRawCourseData(rawCourseData);
+
+export const levelsToNames = {
+  h: 'Honors',
+  r: 'Regents',
+  pr: 'Post-Regents',
+  ap: 'AP',
+  supa: 'SUPA',
+  n: 'Non-regents'
+};
 
 export function search(array, value, key) {
   if (key === undefined) {
