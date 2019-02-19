@@ -28,8 +28,7 @@ const rawSubjectData = [
     [
       ['before-ddp', 'Before DDP'],
       ['after-ddp', 'After DDP'],
-      ['extra', 'Extra'],
-      ['misc', 'Misc']
+      ['extra', 'Extra']
     ]
   ],
   [
@@ -42,8 +41,7 @@ const rawSubjectData = [
       ['latin', 'Latin'],
       ['german', 'German'],
       ['chinese', 'Chinese'],
-      ['extra', 'Extra'],
-      ['misc', 'Misc']
+      ['other', 'Other']
     ]
   ]
 ];
@@ -62,7 +60,8 @@ function processRawSubjectData(raw) {
       name,
       mainCategory,
       categories: subjectCategories,
-      baseCourses: {}
+      baseCourses: {},
+      courses: []
     };
   }
   return subjects;
@@ -70,7 +69,7 @@ function processRawSubjectData(raw) {
 
 function incorporateRawCourseData(raw) {
   for (const course of raw) {
-    // add to non-categorized object
+    // add to non-categorized base courses object
     const baseCourses = subjects[course.subject].baseCourses;
     if (!baseCourses[course.baseKey]) {
       baseCourses[course.baseKey] = {
@@ -81,13 +80,20 @@ function incorporateRawCourseData(raw) {
     }
     baseCourses[course.baseKey].courses[course.level || 'e'] = course;
     ++baseCourses[course.baseKey].size;
+
+    // add to courses object
+    subjects[course.subject].courses.push(course);
   }
   // categorize all the base courses
   for (const [subjectKey, subject] of Object.entries(subjects)) {
     for (const [key, baseCourse2] of Object.entries(subject.baseCourses)) {
       const category = subject.categories[baseCourse2.category];
       if (category === undefined) {
-        console.log(`missing category ${baseCourse2.category} in subject ${subjectKey}`);
+        throw new Error(
+          `missing category '${
+            baseCourse2.category
+          }' in subject '${subjectKey}'`
+        );
       } else {
         category.baseCourses[key] = baseCourse2;
       }

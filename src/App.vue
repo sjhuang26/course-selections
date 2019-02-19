@@ -1,5 +1,5 @@
 <template>
-  <AppBody />
+  <AppBody id="app" />
 </template>
 
 <script>
@@ -21,6 +21,23 @@ export default {
 </style>
 
 <style>
+html {
+  height: 100%;
+  display: flex;
+  flex-flow: column;
+}
+body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+}
+#app {
+  flex: 1;
+  min-height: 0;
+}
+
 .h-layout {
   display: flex;
   flex-flow: row;
