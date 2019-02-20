@@ -75,7 +75,7 @@ function processAndIncorporateRawCourseData(raw) {
 
     // add to main courses object
     courses[course.key] = course;
-    
+
     // add to non-categorized base courses object
     const baseCourses = subjects[course.subject].baseCourses;
     if (!baseCourses[course.baseKey]) {

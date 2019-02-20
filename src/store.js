@@ -18,7 +18,7 @@ export default new Vuex.Store({
       state.schedule.push({ grade, courseKey });
     },
     removeCourse(state, courseKey, grade) {
-      state.schedule = state.schedule.map(x => {
+      state.schedule = state.schedule.filter(x => {
         if (x.courseKey !== courseKey) return true;
         if (grade === undefined) return false;
         if (x.grade !== grade) return true;
@@ -31,7 +31,8 @@ export default new Vuex.Store({
   },
   getters: {
     isCourseSelected(state) {
-      return courseKey => state.schedule.map(x => x.courseKey).includes(courseKey);
+      return courseKey =>
+        state.schedule.map(x => x.courseKey).includes(courseKey);
     }
   },
   actions: {

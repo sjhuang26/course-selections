@@ -4,7 +4,7 @@
     <ul class="list-group">
       <li
         v-for="scheduledCourse of schedule"
-        :key="'grad-req-' + scheduledCourse.grade + scheduledCourse.courseKey "
+        :key="'grad-req-' + scheduledCourse.grade + scheduledCourse.courseKey"
         class="list-group-item"
       >
         {{ scheduledCourse.grade }} {{ scheduledCourse.courseKey }}

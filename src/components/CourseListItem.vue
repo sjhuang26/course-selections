@@ -1,12 +1,7 @@
 <template>
   <b-list-group-item class="course">
-    <div class="course-names">
-      {{ course.id }} {{ course.name }}
-    </div>
-    <CourseToggleButton
-      :course="course"
-      :level="course.level"
-    />
+    <div class="course-names">{{ course.id }} {{ course.name }}</div>
+    <CourseToggleButton :course="course" :level="course.level" />
   </b-list-group-item>
 </template>
 
