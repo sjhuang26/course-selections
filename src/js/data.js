@@ -61,14 +61,21 @@ function processRawSubjectData(raw) {
       mainCategory,
       categories: subjectCategories,
       baseCourses: {},
-      courses: []
+      courses: {}
     };
   }
   return subjects;
 }
 
-function incorporateRawCourseData(raw) {
+function processAndIncorporateRawCourseData(raw) {
+  const courses = {};
   for (const course of raw) {
+    // preprocess the level
+    if (!course.level) course.level = 'e';
+
+    // add to main courses object
+    courses[course.key] = course;
+    
     // add to non-categorized base courses object
     const baseCourses = subjects[course.subject].baseCourses;
     if (!baseCourses[course.baseKey]) {
@@ -78,11 +85,11 @@ function incorporateRawCourseData(raw) {
         courses: {}
       };
     }
-    baseCourses[course.baseKey].courses[course.level || 'e'] = course;
+    baseCourses[course.baseKey].courses[course.level] = course;
     ++baseCourses[course.baseKey].size;
 
     // add to courses object
-    subjects[course.subject].courses.push(course);
+    subjects[course.subject].courses[course.key] = course;
   }
   // categorize all the base courses
   for (const [subjectKey, subject] of Object.entries(subjects)) {
@@ -99,10 +106,12 @@ function incorporateRawCourseData(raw) {
       }
     }
   }
+
+  return courses;
 }
 
 export const subjects = processRawSubjectData(rawSubjectData);
-incorporateRawCourseData(rawCourseData);
+export const courses = processAndIncorporateRawCourseData(rawCourseData);
 
 export const levelsToNames = {
   h: 'Honors',

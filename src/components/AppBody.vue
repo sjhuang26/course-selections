@@ -42,6 +42,7 @@
         <SubjectPage
           v-if="currentPage[0] === 'subject'"
           :subjectKey="currentPage[1]"
+          :key="'subject-page-forcing-rerender-' + currentPage[1]"
         />
         <GraduationRequirementsPage
           v-if="currentPage[0] === 'graduation-requirements'"
