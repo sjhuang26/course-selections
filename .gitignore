@@ -21,4 +21,4 @@ yarn-error.log*
 *.sw*
 
 # Assets
-/src/assets/course-infographics
+/src/assets/course-infographics/

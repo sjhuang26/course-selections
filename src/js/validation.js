@@ -19,6 +19,4 @@ export function validateSchedule(schedule) {
   return validateScheduleContext(context);
 }
 
-function validateScheduleContext(context) {
-
-}
+function validateScheduleContext(context) {}
