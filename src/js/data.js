@@ -76,6 +76,7 @@ function processAndIncorporateRawCourseData(raw) {
     if (!course.gradeCommon) course.gradeCommon = course.gradeConstraint;
     course.duplicatable = !!course.duplicatable;
     course.semester = !!course.semester;
+    course.series = Number(course.series);
 
     // add to main courses object
     courses[course.key] = course;

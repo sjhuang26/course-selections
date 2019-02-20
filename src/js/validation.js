@@ -14,12 +14,12 @@ const subjectContextValidators = {
   }
 };
 
-function prereqIssue(course, prereq) {
+function prereqIssue(courseKey, prereqKey) {
   return {
     severity: 'error',
     type: 'prereq',
-    course: course.key,
-    prereq
+    course: courseKey,
+    prereq: prereqKey
   };
 }
 
@@ -95,15 +95,40 @@ class ScheduleValidator {
     }
     // VALIDATE CONTEXT
     console.log(this.schedule);
-    for (const [ subjectKey, subject ] of Object.entries(this.schedule)) {
+    for (const [subjectKey, subject] of Object.entries(this.schedule)) {
       // check for grade issues
       for (const course of Object.values(subject.courses)) {
         this.captureIssues(this.validateCourseGrade)(course);
       }
       // check for duplicate classes
-      for (const [baseCourseKey, baseCourse] of Object.entries(subject.baseCourses)) {
-        this.captureIssues(this.validateCourseDuplication)(subjectKey, baseCourseKey, baseCourse);
+      for (const [baseCourseKey, baseCourse] of Object.entries(
+        subject.baseCourses
+      )) {
+        this.captureIssues(this.validateCourseDuplication)(
+          subjectKey,
+          baseCourseKey,
+          baseCourse
+        );
       }
+
+      // generate representative instances for all base courses
+      for (const baseCourse of Object.values(subject.baseCourses)) {
+        let earliestInstanceGrade = 999;
+        let earliestInstance = null;
+        for (const instance of baseCourse.instances) {
+          if (instance.grade < earliestInstanceGrade) {
+            earliestInstanceGrade = instance.grade;
+            earliestInstance = instance;
+          }
+        }
+        baseCourse.reprInstance = earliestInstance;
+      }
+
+      // look for series prerequisite violations
+      for (const baseCourse of Object.values(subject.baseCourses)) {
+        this.captureIssues(this.validateSeriesPrereqs)(subject, baseCourse);
+      }
+
       // call context validators
       if (subjectContextValidators[subjectKey]) {
         this.issues = this.issues.concat(
@@ -153,6 +178,41 @@ class ScheduleValidator {
     }
   }
 
+  validateSeriesPrereqs(subject, baseCourse) {
+    const { reprInstance } = baseCourse;
+    const repr = courses[reprInstance.courseKey];
+    if (repr.series > 1) {
+      let satisfied = false;
+      // look through all courses in the group
+      for (const { courseKey, grade } of Object.values(subject.courses)) {
+        const course = courses[courseKey];
+        console.log(courseKey, grade, reprInstance, repr);
+        if (
+          grade < reprInstance.grade &&
+          course.series + 1 === repr.series &&
+          course.group === repr.group
+        ) {
+          satisfied = true;
+          break;
+        }
+      }
+      if (!satisfied) {
+        // find the other missing course in the series
+        let other = null;
+        for (const course of Object.values(courses)) {
+          if (
+            course.series + 1 === repr.series &&
+            course.group === repr.group
+          ) {
+            other = course;
+            break;
+          }
+        }
+        throw prereqIssue(repr.key, other.key);
+      }
+    }
+  }
+
   captureIssues(func) {
     return (...args) => {
       try {
@@ -176,7 +236,8 @@ export function validate(schedule) {
       courses: {}
     };
   }
-  for (const course of schedule.filter(x => x.grade !== 0)) {
+  const scheduleNoVueObservers = JSON.parse(JSON.stringify(schedule));
+  for (const course of scheduleNoVueObservers.filter(x => x.grade !== 0)) {
     const baseKey = courses[course.courseKey].baseKey;
     s[courses[course.courseKey].subject].courses[course.courseKey] = course;
     const t = s[courses[course.courseKey].subject].baseCourses;
