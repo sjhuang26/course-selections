@@ -70,8 +70,12 @@ function processRawSubjectData(raw) {
 function processAndIncorporateRawCourseData(raw) {
   const courses = {};
   for (const course of raw) {
-    // preprocess the level
+    // preprocess
     if (!course.level) course.level = 'e';
+    if (!course.gradeConstraint) course.gradeConstraint = '1234';
+    if (!course.gradeCommon) course.gradeCommon = course.gradeConstraint;
+    course.duplicatable = !!course.duplicatable;
+    course.semester = !!course.semester;
 
     // add to main courses object
     courses[course.key] = course;

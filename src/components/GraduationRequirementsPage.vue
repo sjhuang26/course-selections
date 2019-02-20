@@ -10,15 +10,20 @@
         {{ scheduledCourse.grade }} {{ scheduledCourse.courseKey }}
       </li>
     </ul>
+    <p>{{ issues }}</p>
   </div>
 </template>
 
 <script>
 import { mapState } from 'vuex';
+import { validate } from '../js/validation';
 
 export default {
   name: 'GraduationRequirementsPage',
   computed: {
+    issues() {
+      return validate(this.schedule);
+    },
     ...mapState(['schedule'])
   }
 };
