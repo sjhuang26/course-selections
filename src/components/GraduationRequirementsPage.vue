@@ -10,7 +10,12 @@
         {{ scheduledCourse.grade }} {{ scheduledCourse.courseKey }}
       </li>
     </ul>
-    <p>{{ issues }}</p>
+    <h2>Issues</h2>
+    <Issue
+      v-for="issue of issues"
+      :key="'issue-' + JSON.stringify(issue)"
+      :issue="issue"
+    />
   </div>
 </template>
 
@@ -18,8 +23,13 @@
 import { mapState } from 'vuex';
 import { validate } from '../js/validation';
 
+import Issue from './Issue';
+
 export default {
   name: 'GraduationRequirementsPage',
+  components: {
+    Issue
+  },
   computed: {
     issues() {
       return validate(this.schedule);

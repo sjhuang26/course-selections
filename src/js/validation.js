@@ -1,4 +1,4 @@
-import { subjects, courses } from './data';
+import { subjects, courses, gradeToNumber } from './data';
 
 const subjectContextBuilders = {
   english() {
@@ -58,17 +58,6 @@ function duplicationIssue(baseCourseKey) {
     type: 'duplication',
     baseCourse: baseCourseKey
   };
-}
-
-const gradesToNumber = {
-  9: 1,
-  10: 2,
-  11: 3,
-  12: 4
-};
-
-function gradeToNumber(grade) {
-  return gradesToNumber[grade];
 }
 
 class ScheduleValidator {

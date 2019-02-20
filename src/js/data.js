@@ -147,3 +147,25 @@ export function searchUnique(array, value, key) {
     if (element[key] === value) return element;
   }
 }
+
+const gradesToNumber = {
+  9: 1,
+  10: 2,
+  11: 3,
+  12: 4
+};
+
+const numbersToGrade = {
+  1: 9,
+  2: 10,
+  3: 11,
+  4: 12
+};
+
+export function gradeToNumber(grade) {
+  return gradesToNumber[grade];
+}
+
+export function numberToGrade(number) {
+  return numbersToGrade[number];
+}
