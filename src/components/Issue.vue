@@ -23,6 +23,7 @@ export default {
           courses[issue.course].name +
           ' cannot be taken without taking ' +
           courses[issue.prereq].name +
+          (issue.altPrereq ? ' or ' + courses[issue.altPrereq].name : '') +
           ' first.'
         );
       }
@@ -36,11 +37,7 @@ export default {
         );
       }
       if (issue.type === 'duplication') {
-        return (
-          'You can only take course ' +
-          issue.baseCourse +
-          ' once.'
-        );
+        return 'You can only take course ' + issue.baseCourse + ' once.';
       }
       return 'Unknown issue';
     }
