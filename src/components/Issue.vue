@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import { courses, numberToGrade } from '../js/data';
+import { numberToGrade } from '../js/data';
 
 export default {
   name: 'Issue',
@@ -19,13 +19,8 @@ export default {
     alertContent() {
       const { issue } = this;
       if (issue.type === 'prereq') {
-        return (
-          courses[issue.course].name +
-          ' cannot be taken without taking ' +
-          courses[issue.prereq].name +
-          (issue.altPrereq ? ' or ' + courses[issue.altPrereq].name : '') +
-          ' first.'
-        );
+        // TODO
+        return JSON.stringify(issue);
       }
       if (issue.type === 'duplicate-entry') {
         return (
