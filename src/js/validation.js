@@ -81,7 +81,7 @@ const coursePrereqRules = (() => {
         const unflatValues = tokens
           .filter(x => x !== 'or')
           .map(x => this.parseRule([x]));
-        
+
         result.values = [];
         // flatten out nested ORs
         for (const v of unflatValues) {
@@ -138,7 +138,6 @@ const coursePrereqRules = (() => {
 
       // has to be a course
       result.type = 'course';
-
       result.value = rule;
       return result;
     }
@@ -279,7 +278,7 @@ function duplicationIssue(baseCourseKey) {
 
 function calculatePrereqRule(rule, doesPrereqExistCallback) {
   if (rule.type === 'identity') {
-    return doesPrereqExistCallback(rule.value, rule.concurrent);
+    return doesPrereqExistCallback(rule.value);
   } else if (rule.type === 'and') {
     let result = true;
     for (const x of rule.values) {
@@ -430,18 +429,15 @@ class ScheduleValidator {
   validatePrereq(instance) {
     const rules = coursePrereqRules[instance.courseKey];
     if (rules) {
-      this.validatePrereqUsingRules(
-        instance,
-        rules
-      );
+      this.validatePrereqUsingRules(instance, rules);
     }
   }
 
   validatePrereqUsingRules(instance, rules) {
     for (const { severity, rule } of rules) {
       if (
-        !calculatePrereqRule(rule, (prereqKey, isConcurrent) =>
-          this.doesPrereqExist(instance, prereqKey, isConcurrent)
+        !calculatePrereqRule(rule, (ruleValue, isConcurrent) =>
+          this.doesPrereqExist(instance, ruleValue, isConcurrent)
         )
       ) {
         throw prereqIssue(severity, instance.courseKey, rule);
@@ -463,12 +459,20 @@ class ScheduleValidator {
     };
   }
 
-  doesPrereqExist(instance, prereqKey, isConcurrent) {
+  doesPrereqExist(instance, ruleValue, isConcurrent) {
+    if (
+      ruleValue.type !== 'course' ||
+      courses[ruleValue.value].subject === 'math'
+    ) {
+      // TODO
+      return true;
+    }
+
     let exists = false;
     for (const subject of Object.values(this.schedule)) {
       for (const { courseKey, grade } of Object.values(subject.courses)) {
         if (
-          prereqKey === courseKey &&
+          ruleValue.value === courseKey &&
           (grade < instance.grade || (isConcurrent && grade <= instance.grade))
         ) {
           exists = true;
@@ -485,15 +489,21 @@ class ScheduleValidator {
         {
           severity: 'error',
           rule: {
-            type: 'and',
+            type: 'or',
             values: [
               {
                 type: 'identity',
-                value: prereqKey
+                value: {
+                  type: 'course',
+                  value: prereqKey
+                }
               },
               {
                 type: 'identity',
-                value: altKey
+                value: {
+                  type: 'course',
+                  value: altKey
+                }
               }
             ]
           }
@@ -505,7 +515,10 @@ class ScheduleValidator {
           severity: 'error',
           rule: {
             type: 'identity',
-            value: prereqKey
+            value: {
+              type: 'course',
+              value: prereqKey
+            }
           }
         }
       ]);
