@@ -278,7 +278,7 @@ function duplicationIssue(baseCourseKey) {
 
 function calculatePrereqRule(rule, doesPrereqExistCallback) {
   if (rule.type === 'identity') {
-    return doesPrereqExistCallback(rule.value);
+    return getEarliestGrade(rule.value);
   } else if (rule.type === 'and') {
     let result = true;
     for (const x of rule.values) {
