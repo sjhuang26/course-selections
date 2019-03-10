@@ -19,13 +19,107 @@ const additionalSubjectValidators = {
   }
 };
 
-const coursePrereqRules = (() => {
-  // This class serves two purposes: (1) deals with rule parsing (2) builds arrays of rule objects of form { rule [a tree representation], severity }.
+function tokenize(string) {
+  return string.match(/\S+/g);
+}
+
+function parseRule(ruleArray) {
+  let result = {};
+
+  if (ruleArray.length > 1) {
+    result.type = 'and';
+    const unflatValues = ruleArray.map(x => parseRule([x]));
+    result.values = [];
+    // flatten out nested ANDs
+    for (const v of unflatValues) {
+      if (v.type === 'and') {
+        for (const x of v.values) {
+          result.values.push(x);
+        }
+      } else {
+        result.values.push(v);
+      }
+    }
+    return result;
+  }
+
+  const tokens = tokenize(ruleArray[0]);
+
+  if (tokens.includes('or')) {
+    result.type = 'or';
+    const unflatValues = tokens
+      .filter(x => x !== 'or')
+      .map(x => parseRule([x]));
+
+    result.values = [];
+    // flatten out nested ORs
+    for (const v of unflatValues) {
+      if (v.type === 'or') {
+        for (const x of v.values) {
+          result.values.push(x);
+        }
+      } else {
+        result.values.push(v);
+      }
+    }
+  } else if (tokens.length > 1) {
+    result.type = 'and';
+    const unflatValues = tokens.map(x => parseRule([x]));
+    result.values = [];
+    // flatten out nested ANDs
+    for (const v of unflatValues) {
+      if (v.type === 'and') {
+        for (const x of v.values) {
+          result.values.push(x);
+        }
+      } else {
+        result.values.push(v);
+      }
+    }
+  } else {
+    result = parseSingleRule(tokens[0]);
+  }
+  return result;
+}
+
+function parseSingleRule(rule) {
+  const result = {};
+  if (rule.endsWith('+')) {
+    // concurrent
+    result.concurrent = true;
+    rule = rule.slice(0, -1);
+  }
+
+  if (rule.startsWith('*')) {
+    // group
+    result.type = 'group';
+    result.fullKey = rule.slice(1);
+    result.subject = result.fullKey.split('/')[0];
+    result.name = result.fullKey.split('/')[1];
+
+    return result;
+  }
+
+  if (rule.startsWith('.')) {
+    // condition
+    result.type = 'condition';
+    result.name = rule.slice(1);
+    return result;
+  }
+
+  // has to be a course
+  result.type = 'course';
+  result.key = rule;
+  return result;
+}
+
+const { coursePrereqRules, conditions, courseTags } = (() => {
+  // This class is a convenience wrapper around the rule parser.
   class Rule {
     constructor(rule, accumulatorArray) {
       this.accumulatorArray = accumulatorArray;
       this.result = {
-        rule: this.parseRule(rule),
+        rule: parseRule(rule),
         severity: null
       };
     }
@@ -49,101 +143,15 @@ const coursePrereqRules = (() => {
       this.accumulatorArray.push(this.result);
       return null;
     }
-
-    // Rule parsing logic is bundled in the Rule class.
-
-    parseRule(ruleArray) {
-      const result = {};
-
-      if (ruleArray.length > 1) {
-        result.type = 'and';
-        const unflatValues = ruleArray.map(x => this.parseRule([x]));
-        result.values = [];
-        // flatten out nested ANDs
-        for (const v of unflatValues) {
-          if (v.type === 'and') {
-            for (const x of v.values) {
-              result.values.push(x);
-            }
-          } else {
-            result.values.push(v);
-          }
-        }
-        return result;
-      }
-
-      const condition = ruleArray[0];
-
-      const tokens = condition.match(/\S+/g);
-
-      if (tokens.includes('or')) {
-        result.type = 'or';
-        const unflatValues = tokens
-          .filter(x => x !== 'or')
-          .map(x => this.parseRule([x]));
-
-        result.values = [];
-        // flatten out nested ORs
-        for (const v of unflatValues) {
-          if (v.type === 'or') {
-            for (const x of v.values) {
-              result.values.push(x);
-            }
-          } else {
-            result.values.push(v);
-          }
-        }
-      } else if (tokens.length > 1) {
-        result.type = 'and';
-        const unflatValues = tokens.map(x => this.parseRule([x]));
-        result.values = [];
-        // flatten out nested ANDs
-        for (const v of unflatValues) {
-          if (v.type === 'and') {
-            for (const x of v.values) {
-              result.values.push(x);
-            }
-          } else {
-            result.values.push(v);
-          }
-        }
-      } else {
-        result.type = 'identity';
-        result.value = this.parseRuleString(tokens[0]);
-      }
-      return result;
-    }
-
-    parseRuleString(rule) {
-      const result = {};
-      if (rule.endsWith('+')) {
-        // concurrent
-        result.concurrent = true;
-        rule = rule.slice(0, -1);
-      }
-
-      if (rule.startsWith('$')) {
-        // parameter
-        result.type = 'parameter';
-        result.name = rule.slice(1);
-        return result;
-      }
-
-      if (rule.startsWith('.')) {
-        // condition
-        result.type = 'condition';
-        result.name = rule.slice(1);
-        return result;
-      }
-
-      // has to be a course
-      result.type = 'course';
-      result.value = rule;
-      return result;
-    }
   }
 
-  const raw = [
+  const conditionRaw = [
+    ['bio', ['*science/bio'], 'a biology course'],
+    ['chem', ['*science/chem'], 'a chemistry course'],
+    ['phys', ['*science/physics'], 'a physics course']
+  ];
+
+  const courseRaw = [
     [
       'earth-sci/h',
       rule => {
@@ -162,14 +170,14 @@ const coursePrereqRules = (() => {
       rule => {
         rule('.bio .alg-1', '.geom+ or .alg-2+').required;
         rule('bio/h alg-2/ac+').recommended;
-        rule('$strong-math').info;
+        rule.tag('strong-math');
       }
     ],
     [
       'phys/r',
       rule => {
         rule('.bio .chem', '.alg-2+', '$strong-math').required;
-        rule('$strong-math').info;
+        rule.tag('strong-math');
       }
     ],
     [
@@ -177,7 +185,7 @@ const coursePrereqRules = (() => {
       rule => {
         rule('.bio .chem .alg-2').required;
         rule('chem/h', 'alg-2/ac or .precalc+').recommended;
-        rule('$strong-math').info;
+        rule.tag('strong-math');
       }
     ],
     [
@@ -191,14 +199,14 @@ const coursePrereqRules = (() => {
       rule => {
         rule('.chem .alg-2').required;
         rule('.phys alg-2/ac').recommended;
-        rule('$strong-math').info;
+        rule.tag('strong-math');
       }
     ],
     [
-      'ap-phys',
+      'ap-physics',
       rule => {
         rule('.chem .phys .ap-calc+').required;
-        rule('$strong-math').info;
+        rule.tag('strong-math');
       }
     ],
     [
@@ -216,18 +224,43 @@ const coursePrereqRules = (() => {
     ]
   ];
 
+  // BUILD: CoursePrereqRules and CourseTags
+
   // SCHEMA: result[key] = [{ severity, rule }]
-  const result = {};
-  for (const [courseKey, validator] of raw) {
+  const coursePrereqRules = {};
+
+  // SCHEMA: result[key] = [...tags]
+  const courseTags = {};
+
+  for (const [courseKey, validator] of courseRaw) {
     const accumulatorArray = [];
 
+    // create a function that also has a property
+    const fn = (...ruleArray) => new Rule(ruleArray, accumulatorArray);
+    fn.tag = tagString => {
+      courseTags[courseKey] = tokenize(tagString);
+    };
     // call the validator!
-    validator((...ruleArray) => new Rule(ruleArray, accumulatorArray));
+    validator(fn);
 
-    result[courseKey] = accumulatorArray;
+    coursePrereqRules[courseKey] = accumulatorArray;
   }
 
-  return result;
+  // BUILD: Conditions
+
+  const conditions = {};
+  for (const [conditionKey, ruleArray, name] of conditionRaw) {
+    conditions[conditionKey] = {
+      rule: parseRule(ruleArray),
+      name
+    };
+  }
+
+  return {
+    coursePrereqRules,
+    conditions,
+    courseTags
+  };
 })();
 
 function prereqIssue(severityLevel, courseKey, parsedRule) {
@@ -276,28 +309,46 @@ function duplicationIssue(baseCourseKey) {
   };
 }
 
-function calculatePrereqRule(rule, doesPrereqExistCallback) {
-  if (rule.type === 'identity') {
-    return getEarliestGrade(rule.value);
-  } else if (rule.type === 'and') {
-    let result = true;
-    for (const x of rule.values) {
-      if (!calculatePrereqRule(x, doesPrereqExistCallback)) {
-        result = false;
-      }
+function utilCalculatePrereqRule(rule, cbEvaluateRuleValue) {
+  // TODO: LOGGING
+  console.log('UTIL', rule);
+  const _result = (() => {
+    let result;
+    let conditionRule;
+    switch (rule.type) {
+      case 'and':
+        result = -Infinity;
+        for (const x of rule.values) {
+          result = Math.max(
+            result,
+            utilCalculatePrereqRule(x, cbEvaluateRuleValue)
+          );
+        }
+        return result;
+      case 'or':
+        result = Infinity;
+        for (const x of rule.values) {
+          result = Math.min(
+            result,
+            utilCalculatePrereqRule(x, cbEvaluateRuleValue)
+          );
+        }
+        return result;
+      case 'condition':
+        if (conditions[rule.name] === undefined) {
+          return -Infinity; // TODO
+        }
+        conditionRule = conditions[rule.name].rule;
+        return utilCalculatePrereqRule(conditionRule, cbEvaluateRuleValue); // TODO add caching
+      case 'course':
+      case 'group':
+        return cbEvaluateRuleValue(rule);
+      default:
+        throw new Error('unknown prereq rule type');
     }
-    return result;
-  } else if (rule.type === 'or') {
-    let result = false;
-    for (const x of rule.values) {
-      if (calculatePrereqRule(x, doesPrereqExistCallback)) {
-        result = true;
-      }
-    }
-    return result;
-  } else {
-    throw new Error('rule type does not exist');
-  }
+  })();
+  console.log('RETURN', _result);
+  return _result;
 }
 
 class ScheduleValidator {
@@ -436,9 +487,10 @@ class ScheduleValidator {
   validatePrereqUsingRules(instance, rules) {
     for (const { severity, rule } of rules) {
       if (
-        !calculatePrereqRule(rule, (ruleValue, isConcurrent) =>
-          this.doesPrereqExist(instance, ruleValue, isConcurrent)
-        )
+        utilCalculatePrereqRule(
+          rule,
+          this.evaluateRuleValueDuringCalc.bind(this)
+        ) > instance.grade
       ) {
         throw prereqIssue(severity, instance.courseKey, rule);
       }
@@ -459,28 +511,49 @@ class ScheduleValidator {
     };
   }
 
-  doesPrereqExist(instance, ruleValue, isConcurrent) {
-    if (
-      ruleValue.type !== 'course' ||
-      courses[ruleValue.value].subject === 'math'
-    ) {
-      // TODO
-      return true;
-    }
-
-    let exists = false;
+  findEarliestInstance(courseKey) {
+    let earliestGrade = Infinity;
     for (const subject of Object.values(this.schedule)) {
-      for (const { courseKey, grade } of Object.values(subject.courses)) {
-        if (
-          ruleValue.value === courseKey &&
-          (grade < instance.grade || (isConcurrent && grade <= instance.grade))
-        ) {
-          exists = true;
-          break;
+      for (const instance of Object.values(subject.courses)) {
+        if (courseKey === instance.courseKey) {
+          earliestGrade = Math.min(earliestGrade, instance.grade);
         }
       }
     }
-    return exists;
+    return earliestGrade;
+  }
+
+  findEarliestGroupInstance(subjectKey, groupName) {
+    let earliestGrade = Infinity;
+    for (const instance of Object.values(this.schedule[subjectKey].courses)) {
+      if (
+        subjectKey === courses[instance.courseKey].subject &&
+        groupName === courses[instance.courseKey].group
+      ) {
+        earliestGrade = Math.min(earliestGrade, instance.grade);
+      }
+    }
+    return earliestGrade;
+  }
+
+  evaluateRuleValueDuringCalc(ruleValue) {
+    let earliestGrade = Infinity;
+    if (ruleValue.type === 'course') {
+      earliestGrade = this.findEarliestInstance(ruleValue.key);
+    } else if (ruleValue.type === 'group') {
+      earliestGrade = this.findEarliestGroupInstance(
+        ruleValue.subject,
+        ruleValue.name
+      );
+    } else {
+      throw new Error('invalid rule value');
+    }
+
+    if (ruleValue.concurrent) {
+      return earliestGrade;
+    } else {
+      return earliestGrade + 1;
+    }
   }
 
   ensurePrereqExists(instance, prereqKey, altKey) {
@@ -492,18 +565,12 @@ class ScheduleValidator {
             type: 'or',
             values: [
               {
-                type: 'identity',
-                value: {
-                  type: 'course',
-                  value: prereqKey
-                }
+                type: 'course',
+                key: prereqKey
               },
               {
-                type: 'identity',
-                value: {
-                  type: 'course',
-                  value: altKey
-                }
+                type: 'course',
+                key: altKey
               }
             ]
           }
@@ -514,11 +581,8 @@ class ScheduleValidator {
         {
           severity: 'error',
           rule: {
-            type: 'identity',
-            value: {
-              type: 'course',
-              value: prereqKey
-            }
+            type: 'course',
+            key: prereqKey
           }
         }
       ]);
@@ -527,7 +591,7 @@ class ScheduleValidator {
 
   generateReprInstance(baseCourse) {
     // default values for a search for the instance with the earliest grade
-    let earliestInstanceGrade = 999;
+    let earliestInstanceGrade = Infinity;
     let earliestInstance = null;
 
     for (const instance of baseCourse.instances) {
