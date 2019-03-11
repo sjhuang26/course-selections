@@ -1,11 +1,5 @@
 import { subjects, courses, gradeToNumber } from './data';
 
-function buildContext(context) {
-  context.foobar = true;
-}
-
-function additionalValidator() {}
-
 const additionalSubjectValidators = {
   tech(scheduleSubj) {
     for (const { courseKey, grade } of Object.values(scheduleSubj.courses)) {
@@ -113,7 +107,7 @@ function parseSingleRule(rule) {
   return result;
 }
 
-const { coursePrereqRules, conditions, courseTags } = (() => {
+const { coursePrereqRules, conditions, courseTags, graduationRequirements } = (() => {
   // This class is a convenience wrapper around the rule parser.
   class Rule {
     constructor(rule, accumulatorArray) {
@@ -148,7 +142,25 @@ const { coursePrereqRules, conditions, courseTags } = (() => {
   const conditionRaw = [
     ['bio', ['*science/bio'], 'a biology course'],
     ['chem', ['*science/chem'], 'a chemistry course'],
-    ['phys', ['*science/physics'], 'a physics course']
+    ['phys', ['*science/physics'], 'a physics course'],
+    ['earth-sci', ['*science/earth-sci'], 'an earth science course'],
+    ['sci-lp-grad', ['bio', 'earth-sci or chem or phys']]
+  ];
+
+  // NOTE: this array isn't in raw form
+  const graduationRequirements = [
+    ['science', function(required, advanced) {
+      required('science class in 9th grade', this.countSubjectInGrade('science', 1) >= 1);
+      required('science class in 10th grade', this.countSubjectInGrade('science', 2) >= 1);
+      required('science class in 11th grade', this.countSubjectInGrade('science', 3) >= 1);
+      advanced('biology AND earth science/chemistry/physics taken', this.isConditionSatisfied('sci-lp-grad'));
+    }],
+    ['english', function(required) {
+      required('english class in 9th grade', this.countSubjectInGrade('english', 1) >= 1);
+      required('english class in 10th grade', this.countSubjectInGrade('english', 2) >= 1);
+      required('english class in 11th grade', this.countSubjectInGrade('english', 3) >= 1);
+      required('english class in 12th grade', this.countSubjectCreditsInGrade('english', 4) >= 1);
+    }]
   ];
 
   const courseRaw = [
@@ -212,13 +224,13 @@ const { coursePrereqRules, conditions, courseTags } = (() => {
     [
       'environmental-science',
       rule => {
-        rule('.grad/sci').required;
+        rule('.sci-lp-grad').required;
       }
     ],
     [
       'introduction-to-medical-science',
       rule => {
-        rule('.grad/sci .chem+').required;
+        rule('.sci-lp-grad .chem+').required;
         rule('.chem').recommended;
       }
     ]
@@ -259,9 +271,11 @@ const { coursePrereqRules, conditions, courseTags } = (() => {
   return {
     coursePrereqRules,
     conditions,
-    courseTags
+    courseTags,
+    graduationRequirements
   };
 })();
+export { conditions, courseTags };
 
 function prereqIssue(severityLevel, courseKey, parsedRule) {
   return {
@@ -358,10 +372,13 @@ class ScheduleValidator {
 
   validate() {
     this.issues = [];
-    this.context = {};
 
-    // call a method that builds the context
-    buildContext(this.context);
+    for (const scheduleSubject of Object.values(this.schedule)) {
+      // SCHEMA: generate representative instances for all base courses
+      for (const baseCourse of Object.values(scheduleSubject.baseCourses)) {
+        this.generateReprInstance(baseCourse);
+      }
+    }
 
     // iterate over each subject in the schedule
     for (const scheduleSubject of Object.values(this.schedule)) {
@@ -378,11 +395,6 @@ class ScheduleValidator {
           baseCourseKey,
           baseCourse
         );
-      }
-
-      // generate representative instances for all base courses
-      for (const baseCourse of Object.values(scheduleSubject.baseCourses)) {
-        this.generateReprInstance(baseCourse);
       }
 
       // look for series prerequisite violations
@@ -407,10 +419,28 @@ class ScheduleValidator {
       this.captureIssues(validator.bind(this))(this.schedule[validatorSubj]);
     }
 
-    // run additional validator
-    this.captureIssues(additionalValidator.bind(this))();
+    // run graduation validators, which go into a separate graduation checklist
+    const graduationChecklist = graduationRequirements.map(([header, validator]) => {
+      // PURPOSE: this is basically wrapper code to collect and package the results
+      const result = {
+        required: [],
+        advanced: [],
+        header
+      };
+      const reqCallback = (name, value) => {
+        result.required.push({name, value});
+      };
+      const advCallback = (name, value) => {
+        result.advanced.push({name, value});
+      };
+      validator.call(this, reqCallback, advCallback);
+      return result;
+    });
 
-    return this.issues;
+    return {
+      issues: this.issues,
+      graduationChecklist // SCHEMA: in array form
+    };
   }
 
   validateCourseGrade(instance) {
@@ -536,6 +566,30 @@ class ScheduleValidator {
     return earliestGrade;
   }
 
+  countSubject(subjectKey) {
+    return Object.keys(this.schedule[subjectKey].courses).length;
+  }
+
+  countSubjectInGrade(subjectKey, gradeNumber) {
+    let count = 0;
+    for (const instance of Object.values(this.schedule[subjectKey].courses)) {
+      if (gradeNumber === instance.grade) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  countSubjectCreditsInGrade(subjectKey, gradeNumber) {
+    let count = 0;
+    for (const instance of Object.values(this.schedule[subjectKey].courses)) {
+      if (gradeNumber === instance.grade) {
+        count += courses[instance.courseKey].credits;
+      }
+    }
+    return count;
+  }
+
   evaluateRuleValueDuringCalc(ruleValue) {
     let earliestGrade = Infinity;
     if (ruleValue.type === 'course') {
@@ -554,6 +608,12 @@ class ScheduleValidator {
     } else {
       return earliestGrade + 1;
     }
+  }
+
+  isConditionSatisfied(conditionKey) {
+    const { rule } = conditions[conditionKey];
+    // LOGIC: as long as the rule is satisfied sometime before "never" (Infinity), we're fine.
+    return utilCalculatePrereqRule(rule, this.evaluateRuleValueDuringCalc.bind(this)) < Infinity;
   }
 
   ensurePrereqExists(instance, prereqKey, altKey) {

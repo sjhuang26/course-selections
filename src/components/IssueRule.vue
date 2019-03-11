@@ -12,7 +12,7 @@
   </div>
   <span v-else-if="isPrimitive">
     <span v-if="rule.type === 'course'">course {{ rule.key }}</span>
-    <span v-if="rule.type === 'condition'">condition {{ rule.name }}</span>
+    <span v-if="rule.type === 'condition'">{{ conditions[rule.name] ? conditions[rule.name].name : rule.name }}</span>
     <span v-if="rule.type === 'group'">group {{ rule.fullKey }}</span>
   </span>
   <span v-else>
@@ -21,6 +21,8 @@
 </template>
 
 <script>
+import { conditions } from '../js/validation';
+
 export default {
   name: 'IssueRule',
   props: {
@@ -28,6 +30,11 @@ export default {
       type: Object,
       required: true
     }
+  },
+  data() {
+    return {
+      conditions
+    };
   },
   computed: {
     isPrimitive() {

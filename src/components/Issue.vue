@@ -13,12 +13,20 @@
       <p class="lead">Duplicate courses</p>
       <p>You can only take course {{ issue.baseCourse }} once.</p>
     </div>
+    <div v-if="issue.type === 'grade-constraint'">
+      <p class="lead">Wrong grade</p>
+      <p>You have to take {{ courses[issue.course].name }} during grade {{ numberToGrade(issue.requiredGrade) }}.</p>
+    </div>
+    <div v-if="issue.type === 'grade-common'">
+      <p class="lead">Uncommon grade</p>
+      <p>It is uncommon to take course {{ courses[issue.course].name }} during grade {{ numberToGrade(issue.currentGrade) }}.</p>
+    </div>
   </b-alert>
 </template>
 
 <script>
 import IssueRule from './IssueRule';
-import { numberToGrade } from '../js/data';
+import { numberToGrade, courses } from '../js/data';
 
 export default {
   name: 'Issue',
@@ -30,6 +38,11 @@ export default {
       type: Object,
       required: true
     }
+  },
+  data() {
+    return {
+      courses
+    };
   },
   methods: {
     numberToGrade
