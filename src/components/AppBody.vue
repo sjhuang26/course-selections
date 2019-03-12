@@ -28,7 +28,7 @@
           </div>
         </div>
       </b-card>
-      <div class="v-layout m-4 scroll-layout">
+      <div class="v-layout m-4 p-4 scroll-layout">
         <div v-if="currentPage[0] === 'home'">
           <div class="jumbotron">
             <h1 class="display-4">Welcome!</h1>

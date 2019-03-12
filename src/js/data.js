@@ -1,5 +1,6 @@
 import rawCourseData from '../assets/raw-course-data';
 
+// TODO: the abbreviation "phys" will be consistently used
 const rawSubjectData = [
   [
     'english',
@@ -79,7 +80,11 @@ function processAndIncorporateRawCourseData(raw) {
     course.series = Number(course.series);
     // LOGIC: 1 credit for year, 0.5 credit for semester, unless creditException is present
     // NOTE: floating-point error doesn't show up because 0.5, 0.25, etc. can be exactly represented in binary
-    course.credits = course.creditException ? Number(course.creditException) : (course.semester ? 0.5 : 1);
+    course.credits = course.creditException
+      ? Number(course.creditException)
+      : course.semester
+      ? 0.5
+      : 1;
 
     // add to main courses object
     courses[course.key] = course;

@@ -1,4 +1,4 @@
-import { subjects, courses, gradeToNumber } from './data';
+import { subjects, courses } from './data';
 
 const additionalSubjectValidators = {
   tech(scheduleSubj) {
@@ -107,7 +107,12 @@ function parseSingleRule(rule) {
   return result;
 }
 
-const { coursePrereqRules, conditions, courseTags, graduationRequirements } = (() => {
+const {
+  coursePrereqRules,
+  conditions,
+  courseTags,
+  graduationRequirements
+} = (() => {
   // This class is a convenience wrapper around the rule parser.
   class Rule {
     constructor(rule, accumulatorArray) {
@@ -144,23 +149,53 @@ const { coursePrereqRules, conditions, courseTags, graduationRequirements } = ((
     ['chem', ['*science/chem'], 'a chemistry course'],
     ['phys', ['*science/physics'], 'a physics course'],
     ['earth-sci', ['*science/earth-sci'], 'an earth science course'],
-    ['sci-lp-grad', ['bio', 'earth-sci or chem or phys']]
+    ['sci-lp-grad', ['.bio', '.earth-sci or .chem or .phys']]
   ];
 
   // NOTE: this array isn't in raw form
   const graduationRequirements = [
-    ['science', function(required, advanced) {
-      required('science class in 9th grade', this.countSubjectInGrade('science', 1) >= 1);
-      required('science class in 10th grade', this.countSubjectInGrade('science', 2) >= 1);
-      required('science class in 11th grade', this.countSubjectInGrade('science', 3) >= 1);
-      advanced('biology AND earth science/chemistry/physics taken', this.isConditionSatisfied('sci-lp-grad'));
-    }],
-    ['english', function(required) {
-      required('english class in 9th grade', this.countSubjectInGrade('english', 1) >= 1);
-      required('english class in 10th grade', this.countSubjectInGrade('english', 2) >= 1);
-      required('english class in 11th grade', this.countSubjectInGrade('english', 3) >= 1);
-      required('english class in 12th grade', this.countSubjectCreditsInGrade('english', 4) >= 1);
-    }]
+    [
+      'Science',
+      function(required, advanced) {
+        required(
+          'science class in 9th grade',
+          this.countSubjectInGrade('science', 1) >= 1
+        );
+        required(
+          'science class in 10th grade',
+          this.countSubjectInGrade('science', 2) >= 1
+        );
+        required(
+          'science class in 11th grade',
+          this.countSubjectInGrade('science', 3) >= 1
+        );
+        advanced(
+          'biology AND earth science/chemistry/physics taken',
+          this.isConditionSatisfied('sci-lp-grad')
+        );
+      }
+    ],
+    [
+      'English',
+      function(required) {
+        required(
+          'english class in 9th grade',
+          this.countSubjectInGrade('english', 1) >= 1
+        );
+        required(
+          'english class in 10th grade',
+          this.countSubjectInGrade('english', 2) >= 1
+        );
+        required(
+          'english class in 11th grade',
+          this.countSubjectInGrade('english', 3) >= 1
+        );
+        required(
+          'two semester classes or one year-length class in 12th grade',
+          this.countSubjectCreditsInGrade('english', 4) >= 1
+        );
+      }
+    ]
   ];
 
   const courseRaw = [
@@ -186,14 +221,14 @@ const { coursePrereqRules, conditions, courseTags, graduationRequirements } = ((
       }
     ],
     [
-      'phys/r',
+      'physics/r',
       rule => {
         rule('.bio .chem', '.alg-2+', '$strong-math').required;
         rule.tag('strong-math');
       }
     ],
     [
-      'phys/h',
+      'physics/h',
       rule => {
         rule('.bio .chem .alg-2').required;
         rule('chem/h', 'alg-2/ac or .precalc+').recommended;
@@ -325,7 +360,6 @@ function duplicationIssue(baseCourseKey) {
 
 function utilCalculatePrereqRule(rule, cbEvaluateRuleValue) {
   // TODO: LOGGING
-  console.log('UTIL', rule);
   const _result = (() => {
     let result;
     let conditionRule;
@@ -361,7 +395,7 @@ function utilCalculatePrereqRule(rule, cbEvaluateRuleValue) {
         throw new Error('unknown prereq rule type');
     }
   })();
-  console.log('RETURN', _result);
+  // console.log('PREREQ RULE EVALUATION', rule, _result); // LOGGING
   return _result;
 }
 
@@ -420,22 +454,24 @@ class ScheduleValidator {
     }
 
     // run graduation validators, which go into a separate graduation checklist
-    const graduationChecklist = graduationRequirements.map(([header, validator]) => {
-      // PURPOSE: this is basically wrapper code to collect and package the results
-      const result = {
-        required: [],
-        advanced: [],
-        header
-      };
-      const reqCallback = (name, value) => {
-        result.required.push({name, value});
-      };
-      const advCallback = (name, value) => {
-        result.advanced.push({name, value});
-      };
-      validator.call(this, reqCallback, advCallback);
-      return result;
-    });
+    const graduationChecklist = graduationRequirements.map(
+      ([header, validator]) => {
+        // PURPOSE: this is basically wrapper code to collect and package the results
+        const result = {
+          required: [],
+          advanced: [],
+          header
+        };
+        const reqCallback = (name, value) => {
+          result.required.push({ name, value });
+        };
+        const advCallback = (name, value) => {
+          result.advanced.push({ name, value });
+        };
+        validator.call(this, reqCallback, advCallback);
+        return result;
+      }
+    );
 
     return {
       issues: this.issues,
@@ -446,7 +482,7 @@ class ScheduleValidator {
   validateCourseGrade(instance) {
     const { courseKey, grade } = instance;
 
-    const gradeKey = String(gradeToNumber(grade));
+    const gradeKey = String(grade);
     const course = courses[courseKey];
     if (!course.gradeConstraint.includes(gradeKey)) {
       throw gradeConstraintIssue(course, gradeKey, course.gradeConstraint);
@@ -542,6 +578,9 @@ class ScheduleValidator {
   }
 
   findEarliestInstance(courseKey) {
+    if (!courses[courseKey]) {
+      return -Infinity; // TODO
+    }
     let earliestGrade = Infinity;
     for (const subject of Object.values(this.schedule)) {
       for (const instance of Object.values(subject.courses)) {
@@ -554,6 +593,9 @@ class ScheduleValidator {
   }
 
   findEarliestGroupInstance(subjectKey, groupName) {
+    if (!subjects[subjectKey]) {
+      return -Infinity; // TODO
+    }
     let earliestGrade = Infinity;
     for (const instance of Object.values(this.schedule[subjectKey].courses)) {
       if (
@@ -613,7 +655,12 @@ class ScheduleValidator {
   isConditionSatisfied(conditionKey) {
     const { rule } = conditions[conditionKey];
     // LOGIC: as long as the rule is satisfied sometime before "never" (Infinity), we're fine.
-    return utilCalculatePrereqRule(rule, this.evaluateRuleValueDuringCalc.bind(this)) < Infinity;
+    return (
+      utilCalculatePrereqRule(
+        rule,
+        this.evaluateRuleValueDuringCalc.bind(this)
+      ) < Infinity
+    );
   }
 
   ensurePrereqExists(instance, prereqKey, altKey) {
@@ -700,7 +747,7 @@ export function validate(schedule) {
       };
     }
     baseCourses[baseKey].instances.push(instance);
-    baseCourses[baseKey].gradeDistribution[gradeToNumber(instance.grade)]++;
+    baseCourses[baseKey].gradeDistribution[instance.grade]++;
     baseCourses[baseKey].count++;
   }
 

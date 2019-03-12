@@ -1,7 +1,7 @@
 <template>
   <div>
     <div v-show="courseBrowserOpen">
-      <h1 class="display-1 mb-5">All courses</h1>
+      <h1 class="display-2 mb-5">All courses</h1>
       <button
         class="btn btn-primary btn-block btn-lg"
         @click="courseBrowserOpen = false"
@@ -53,13 +53,10 @@
       <h2>Arrange the courses (drag and drop)</h2>
 
       <SubjectPageGrade :subjectKey="subjectKey" :grade="0" />
-      <SubjectPageGrade :subjectKey="subjectKey" :grade="9" />
-      <SubjectPageGrade :subjectKey="subjectKey" :grade="10" />
-      <SubjectPageGrade :subjectKey="subjectKey" :grade="11" />
-      <SubjectPageGrade :subjectKey="subjectKey" :grade="12" />
-
-      <h2>Check for problems</h2>
-      <p class="lead">None.</p>
+      <SubjectPageGrade :subjectKey="subjectKey" :grade="1" />
+      <SubjectPageGrade :subjectKey="subjectKey" :grade="2" />
+      <SubjectPageGrade :subjectKey="subjectKey" :grade="3" />
+      <SubjectPageGrade :subjectKey="subjectKey" :grade="4" />
     </div>
   </div>
 </template>

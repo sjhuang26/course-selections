@@ -69,10 +69,10 @@ export default {
     gradeDisplay() {
       const gradeToDisplay = {
         0: 'No grade',
-        9: '9th grade',
-        10: '10th grade',
-        11: '11th grade',
-        12: '12th grade'
+        1: '9th grade',
+        2: '10th grade',
+        3: '11th grade',
+        4: '12th grade'
       };
       const suffix = this.scheduleGrade.length === 0 ? ' (no courses)' : '';
       return gradeToDisplay[this.grade] + suffix;
