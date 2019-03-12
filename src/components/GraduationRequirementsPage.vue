@@ -16,7 +16,9 @@
           {{ numberToGrade(scheduledCourse.grade) }})
         </b-list-group-item>
       </b-list-group>
-      <b-alert v-if="schedule.length === 0" variant="primary" show>No courses yet!</b-alert>
+      <b-alert v-if="schedule.length === 0" variant="primary" show
+        >No courses yet!</b-alert
+      >
     </div>
     <h2 class="mb-4">Graduation checklist</h2>
     <b-list-group class="mb-5">
@@ -58,7 +60,9 @@
       :issue="issue"
       class="mb-4"
     />
-    <b-alert v-if="validationResult.issues.length === 0" variant="primary" show>No issues!</b-alert>
+    <b-alert v-if="validationResult.issues.length === 0" variant="primary" show
+      >No issues!</b-alert
+    >
   </div>
 </template>
 
